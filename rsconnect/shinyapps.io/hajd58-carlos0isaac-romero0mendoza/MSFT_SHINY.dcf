@@ -1,0 +1,12 @@
+name: MSFT_SHINY
+title: MSFT_SHINY
+username: hajd58-carlos0isaac-romero0mendoza
+account: hajd58-carlos0isaac-romero0mendoza
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 17062189
+bundleId: 11809192
+url: https://hajd58-carlos0isaac-romero0mendoza.shinyapps.io/MSFT_SHINY/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
