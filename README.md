@@ -19,7 +19,7 @@ install.packages(paquetes)
 ### Opción 1 — Desde RStudio
 1. Clona el repositorio:
 ```bash
-git clone https://github.com/tu-usuario/tu-repositorio.git
+git clone https://github.com/romeromendozacarlosisaac-pixel/An-lisis-de-Series-de-Tiempo-Financieras-Microsoft-MSFT-SHINY.git
 ```
 2. Abre RStudio y establece la carpeta del proyecto como directorio de trabajo:
 ```r
