@@ -21,7 +21,7 @@ Tener instalado **R** y **RStudio**:
 Abre RStudio y ejecuta esto en la **consola** (panel inferior izquierdo):
 
 ```r
-install.packages(c("shiny", shinydashboard", "tidyverse", "DT", "plotly", "lubridate", "dplyr"))
+install.packages(c("shiny", shinydashboard", "tidyverse", "DT", "plotly", "lubridate", "dplyr", "zoo", "forecast"))
 ```
 
 ---
