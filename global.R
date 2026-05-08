@@ -1,23 +1,28 @@
 # --- Archivo: global.R ---
-
-# Cargar las librerías necesarias
 library(shiny)
+library(shinydashboard)
 library(tidyverse)
-library(DT) # Para tablas interactivas
-library(plotly) # Para gráficos interactivos
+library(DT)
+library(plotly)
 library(dplyr)
 library(lubridate)
+library(zoo)
+library(forecast)
 
-# Cargar y preparar los datos
-msft <- read.csv("MSFT_data.csv")
 
-# Calculo del retorno logaritmico 
-msft$Date <- as.Date(msft$Date)
+# ── Datos históricos ──────────────────────────────────────────
+msft     <- read.csv("MSFT_data.csv")
+msft$Date  <- as.Date(msft$Date)
 msft$Close <- as.numeric(msft$Close)
+msft_raw   <- msft[order(msft$Date), ]
+
+year_min <- lubridate::year(min(msft$Date))
+year_max <- lubridate::year(max(msft$Date))
+
+# ── Modelo ARIMA — carga UNA sola vez ─────────────────────────
+bundle <- readRDS("arima_bundle.rds")
+modelo <- bundle$modelo
 
 
-year_min <- year(min(msft$Date))
-year_max <- year(max(msft$Date))
 
-# Mensaje de confirmación en la consola
-cat("Datos cargados y preprocesados en global.R\n")
+cat("Datos y modelo cargados correctamente\n")

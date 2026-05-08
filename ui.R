@@ -1,6 +1,8 @@
 # --- Archivo: ui.R  ---
 library(shinydashboard)
 
+# ── Modelo ARIMA — carga UNA sola vez ─────────────────────────
+
 # Define la UI (Interfaz de Usuario)
 ui <- dashboardPage(skin = "purple",
     
@@ -23,6 +25,8 @@ ui <- dashboardPage(skin = "purple",
         menuItem("Objetivos",             tabName = "objetivos",  icon = icon("bullseye")),
         menuItem("Marco Teórico",         tabName = "marco",      icon = icon("book")),
         menuItem("Resultados Interactivos", tabName = "resultado", icon = icon("gears")),
+        menuItem("Métricas ARIMA", tabName = "metric", icon = icon("sliders")),
+        menuItem("Modelo ARIMA", tabName = "modelo", icon = icon("robot")),
         menuItem("Conclusiones",          tabName = "conclusiones", icon = icon("flag-checkered"))
       )
     ),
@@ -140,7 +144,7 @@ text-align: center;
                          box(
                            title       = tagList(icon("list-check"), " Objetivos Específicos"),
                            width       = 12,
-                           status      = "info",
+                           status      = "primary",
                            solidHeader = TRUE,
                            
                           
@@ -180,7 +184,7 @@ text-align: center;
                          box(
                            title       = tagList(icon("scale-balanced"), " Justificación"),
                            width       = 12,
-                           status      = "info",
+                           status      = "primary",
                            solidHeader = TRUE,
                            
                            p("El análisis exploratorio de datos aplicado a series de tiempo financieras
@@ -220,7 +224,59 @@ text-align: center;
                          )
                   ),
                   
+                  # Detección de Atípicos
+                  column(6,
+                         box(
+                           title       = tagList(icon("triangle-exclamation"), " Detección de Anomalías"),
+                           width       = 12,
+                           status      = "primary",
+                           solidHeader = TRUE,
+                           
+                           p("Se utiliza el método del rango intercuartílico (IQR) con
+            un factor de 3.0 para identificar observaciones atípicas
+            en los retornos:"),
+                           
+                           withMathJax(
+                             helpText("$$\\text{Atípico si: } r_t < Q_1 - 3 \\cdot IQR
+                      \\quad \\text{o} \\quad r_t > Q_3 + 3 \\cdot IQR$$")
+                           ),
+                           
+                           p("Donde \\(IQR = Q_3 - Q_1\\) es el rango intercuartílico
+            de los retornos logarítmicos.")
+                         )
+                  )
+                  
                   # Retorno Logarítmico
+
+                ),
+                
+                fluidRow(
+                  # Volatilidad
+                  column(6,
+                         box(
+                           title       = tagList(icon("bolt"), " Volatilidad"),
+                           width       = 12,
+                           status      = "primary",
+                           solidHeader = TRUE,
+                           
+                           p("La volatilidad es una medida de la dispersión de los retornos
+            de un activo. Se estima mediante la desviación estándar de los
+            retornos logarítmicos en una ventana rodante de tamaño \\(n\\):"),
+                           
+                           withMathJax(
+                             helpText("$$\\sigma_t = \\sqrt{\\frac{1}{n-1}
+                      \\sum_{i=0}^{n-1}(r_{t-i} - \\bar{r})^2}$$")
+                           ),
+                           
+                           p("En este análisis se utilizan ventanas de:"),
+                           tags$ul(
+                             tags$li("20 días — aproximación mensual"),
+                             tags$li("60 días — aproximación trimestral"),
+                             tags$li("252 días — aproximación anual (días bursátiles)")
+                           )
+                         )
+                  ),
+                  
                   column(6,
                          box(
                            title       = tagList(icon("wave-square"), " Retorno Logarítmico"),
@@ -250,56 +306,8 @@ text-align: center;
                            )
                          )
                   )
-                ),
-                
-                fluidRow(
-                  # Volatilidad
-                  column(6,
-                         box(
-                           title       = tagList(icon("bolt"), " Volatilidad"),
-                           width       = 12,
-                           status      = "warning",
-                           solidHeader = TRUE,
-                           
-                           p("La volatilidad es una medida de la dispersión de los retornos
-            de un activo. Se estima mediante la desviación estándar de los
-            retornos logarítmicos en una ventana rodante de tamaño \\(n\\):"),
-                           
-                           withMathJax(
-                             helpText("$$\\sigma_t = \\sqrt{\\frac{1}{n-1}
-                      \\sum_{i=0}^{n-1}(r_{t-i} - \\bar{r})^2}$$")
-                           ),
-                           
-                           p("En este análisis se utilizan ventanas de:"),
-                           tags$ul(
-                             tags$li("20 días — aproximación mensual"),
-                             tags$li("60 días — aproximación trimestral"),
-                             tags$li("252 días — aproximación anual (días bursátiles)")
-                           )
-                         )
-                  ),
                   
-                  # Detección de Atípicos
-                  column(6,
-                         box(
-                           title       = tagList(icon("triangle-exclamation"), " Detección de Anomalías"),
-                           width       = 12,
-                           status      = "warning",
-                           solidHeader = TRUE,
-                           
-                           p("Se utiliza el método del rango intercuartílico (IQR) con
-            un factor de 3.0 para identificar observaciones atípicas
-            en los retornos:"),
-                           
-                           withMathJax(
-                             helpText("$$\\text{Atípico si: } r_t < Q_1 - 3 \\cdot IQR
-                      \\quad \\text{o} \\quad r_t > Q_3 + 3 \\cdot IQR$$")
-                           ),
-                           
-                           p("Donde \\(IQR = Q_3 - Q_1\\) es el rango intercuartílico
-            de los retornos logarítmicos.")
-                         )
-                  )
+
                 ),
                 
                 fluidRow(
@@ -344,6 +352,47 @@ text-align: center;
                            withMathJax(helpText("$$Y_t = T_t + S_t + R_t$$")),
                            p("Modelo multiplicativo:"),
                            withMathJax(helpText("$$Y_t = T_t \\times S_t \\times R_t$$"))
+                         )
+                  )
+                ),
+                
+                fluidRow(
+                  column(12,
+                         box(
+                           title       = tagList(icon("chart-line"), "Modelo ARIMA"),
+                           width       = 12,
+                           status      = "primary",
+                           solidHeader = TRUE,
+                           
+                           p("El modelo ARIMA (*AutoRegressive Integrated Moving Average*)
+                             constituye una de las metodologías clásicas más utilizadas para
+                             el modelado y pronóstico de series temporales univariadas. 
+                             Su principal objetivo es describir la dependencia temporal presente
+                             en una serie mediante la combinación de componentes autorregresivos (AR),
+                             de medias móviles (MA) y diferenciación integrada (I) para lograr 
+                             estacionariedad. Un modelo ARIMA se representa generalmente como
+                             ARIMA(p,d,q), donde *p* corresponde al orden autorregresivo,
+                             *d* al número de diferenciaciones necesarias para estacionarizar la serie
+                             y *q* al orden de medias móviles. Matemáticamente, el modelo puede
+                             expresarse como:"),
+                           
+                           withMathJax(
+                             helpText("$$\\phi(B)(1-B)^d y_t = \\theta(B)\\varepsilon_t$$")
+                           ),
+                           
+                           p("donde \\(B\\) es el operador rezago, \\(\\phi(B)\\) representa el componente
+                             autorregresivo, \\(\\theta(B)\\) el componente de medias móviles y 
+                             \\(\\varepsilon_t\\) un término de error aleatorio con media cero y 
+                             varianza constante. El componente AR modela la relación entre un valor
+                             actual y sus valores pasados, mientras que el componente MA captura la
+                             dependencia respecto a errores anteriores. La diferenciación permite
+                             eliminar tendencias y convertir la serie en estacionaria, 
+                             condición fundamental para la correcta aplicación del modelo.
+                             La identificación de los parámetros suele realizarse mediante el
+                             análisis de las funciones de autocorrelación (ACF) y 
+                             autocorrelación parcial (PACF), complementándose posteriormente con 
+                             criterios de información como AIC o BIC y pruebas diagnósticas sobre
+                             los residuales.")
                          )
                   )
                 )
@@ -643,6 +692,276 @@ text-align: center;
                 )
               )
           
+        ),
+        
+        # ── PESTAÑA: Métricas ARIMA ─────────────────────────────────────
+        
+        tabItem(tabName = "metric",
+                
+                fluidRow(
+                  column(12,
+                         box(
+                           title       = tagList(icon("robot"), " Modelo ARIMA — Pronóstico del Precio de Cierre"),
+                           width       = 12,
+                           status      = "primary",
+                           solidHeader = TRUE,
+                           
+                           p("Métricas del modelo de series de tiempo entrenado sobre el precio de cierre
+          ajustado de Microsoft (MSFT).")
+                         )
+                  )
+                ),
+                
+                # ── Métricas del modelo ───────────────────────────────────────
+                fluidRow(
+                  valueBoxOutput("metric_mae",  width = 3),
+                  valueBoxOutput("metric_rmse", width = 3),
+                  valueBoxOutput("metric_mape", width = 3),
+                  valueBoxOutput("metric_da",   width = 3)
+                ),
+                
+                br(),
+                
+                fluidRow(
+                  # Tabla detallada
+                  box(
+                    title       = tagList(icon("table"), " Resumen de Métricas"),
+                    width       = 6,
+                    status      = "primary",
+                    solidHeader = TRUE,
+                    br(),
+                    tableOutput("tabla_metricas"),
+                    br(),
+                    tags$div(
+                      style = "padding: 10px;",
+                      tags$b("Orden del modelo:"),
+                      br(), br(),
+                      uiOutput("orden_modelo")
+                    )
+                  ),
+                  
+                  # Interpretación
+                  box(
+                    title       = tagList(icon("circle-info"), " Interpretación"),
+                    width       = 6,
+                    status      = "primary",
+                    solidHeader = TRUE,
+                    
+                    tags$ul(
+                      tags$li(
+                        tags$b("MAE (Error Absoluto Medio): "),
+                        "Promedio del error absoluto entre el valor predicho y el real.
+               Menor valor indica mayor precisión."
+                      ),
+                      br(),
+                      tags$li(
+                        tags$b("RMSE (Raíz del Error Cuadrático Medio): "),
+                        "Penaliza errores grandes. Útil para detectar predicciones
+               muy alejadas del valor real."
+                      ),
+                      br(),
+                      tags$li(
+                        tags$b("MAPE (Error Porcentual Absoluto Medio): "),
+                        "Expresa el error en porcentaje respecto al valor real.
+               Facilita la comparación entre modelos."
+                      ),
+                      br(),
+                      tags$li(
+                        tags$b("DA (Dirección Acertada): "),
+                        "Porcentaje de veces que el modelo predijo correctamente
+               la dirección del movimiento (alza o baja)."
+                      )
+                    )
+                  )
+                )
+        ),
+        
+        # ── PESTAÑA: Modelo ARIMA ─────────────────────────────────────
+        tabItem(tabName = "modelo",
+                
+            tabsetPanel(
+              type = "tabs",
+              
+              tabPanel( title = tagList(icon("chart-line"), " Pronóstico plano"),
+                        
+                        fluidRow(
+                          column(12,
+                                 box(
+                                   title       = tagList(icon("robot"), " Modelo ARIMA — Pronóstico del Precio de Cierre"),
+                                   width       = 12,
+                                   status      = "primary",
+                                   solidHeader = TRUE,
+                                   
+                                   p("Modelo de series de tiempo entrenado sobre el precio de cierre
+          ajustado de Microsoft (MSFT). El pronóstico se genera a partir
+          del último valor disponible en la serie histórica.")
+                                 )
+                          )
+                        ),
+                        
+                        # ── Controles del pronóstico ──────────────────────────────────
+                        fluidRow(
+                          box(
+                            title       = tagList(icon("sliders"), " Parámetros del Pronóstico"),
+                            width       = 12,
+                            status      = "primary",
+                            solidHeader = TRUE,
+                            
+                            fluidRow(
+                              column(3,
+                                     sliderInput(
+                                       inputId = "horizonte",
+                                       label   = tags$b("Horizonte (días hábiles):"),
+                                       min     = 1,
+                                       max     = 60,
+                                       value   = 30,
+                                       step    = 1
+                                     )
+                              ),
+                              column(3,
+                                     selectInput(
+                                       inputId  = "nivel_confi",
+                                       label    = tags$b("Nivel de confianza:"),
+                                       choices  = c("90%" = 90, "95%" = 95, "99%" = 99),
+                                       selected = 95
+                                     )
+                              ),
+                              column(3,
+                                     selectInput(
+                                       inputId  = "n_hist",
+                                       label    = tags$b("Contexto histórico:"),
+                                       choices  = c(
+                                         "3 meses"  = 63,
+                                         "6 meses"  = 126,
+                                         "1 año"    = 252,
+                                         "2 años"   = 504
+                                       ),
+                                       selected = 126
+                                     )
+                              )
+                            )
+                          )
+                        ),
+                        
+                        # ── Gráfico principal del pronóstico ─────────────────────────
+                        fluidRow(
+                          box(
+                            title       = tagList(icon("chart-line"), " Pronóstico"),
+                            width       = 12,
+                            status      = "primary",
+                            solidHeader = TRUE,
+                            plotlyOutput("plot_pred", height = "450px")
+                          )
+                        ),
+                        
+                        # ── Residuales ───────────────────────────
+                        fluidRow(
+                          box(
+                            title       = tagList(icon("wave-square"), " Residuales del Modelo"),
+                            width       = 12,
+                            status      = "warning",
+                            solidHeader = TRUE,
+                            plotlyOutput("plot_red", height = "350px")
+                          )
+                        )
+
+              ),
+                
+              tabPanel( title = tagList(icon("bolt"), "Rolling Forecast"),
+                fluidRow(
+                  column(12,
+                         box(
+                           title       = tagList(icon("robot"), " Modelo ARIMA — Pronóstico del Precio de Cierre"),
+                           width       = 12,
+                           status      = "primary",
+                           solidHeader = TRUE,
+                           
+                           p("Modelo de series de tiempo entrenado sobre el precio de cierre
+          ajustado de Microsoft (MSFT).")
+                         )
+                  )
+                ),
+                
+                
+                fluidRow(
+                  box(
+                    title       = tagList(icon("sliders"), " Parámetros del Pronóstico"),
+                    width       = 12,
+                    status      = "primary",
+                    solidHeader = TRUE,
+                    
+                    fluidRow(
+                      # Slider ventana temporal
+                      column(6,
+                             dateRangeInput(
+                               inputId  = "zoom_fecha",
+                               label    = tags$b(icon("calendar"), " Ventana Temporal:"),
+                               start    = as.Date(paste0(year_max - 2, "-01-01")),
+                               end      = as.Date(paste0(year_max, "-12-31")),
+                               min      = as.Date(paste0(year_min, "-01-01")),
+                               max      = as.Date(paste0(year_max, "-12-31")),
+                               format   = "mm/yyyy",
+                               language = "es",
+                               width    = "100%"
+                             )
+                      ),
+                      # Selector intervalo de confianza
+                      column(3,
+                             selectInput(
+                               inputId  = "nivel_conf",
+                               label    = tags$b(icon("percent"), " Intervalo de Confianza:"),
+                               choices  = c("95%" = 95, "70%" = 70),
+                               selected = 95
+                             )
+                      ),
+                      # Checkboxes para activar/desactivar capas
+                      column(3,
+                             br(),
+                             checkboxInput(
+                               inputId = "mostrar_forecast",
+                               label   = tags$b("Mostrar Forecast"),
+                               value   = TRUE
+                             ),
+                             checkboxInput(
+                               inputId = "mostrar_ic",
+                               label   = tags$b("Mostrar Intervalo de Confianza"),
+                               value   = TRUE
+                             ),
+                             checkboxInput(
+                               inputId = "mostrar_fuera_ic",
+                               label   = tags$b("Señalar valores fuera del IC"),
+                               value   = FALSE
+                             )
+                      )
+                    )
+                  )
+                ),
+                
+                # Gráfico
+                fluidRow(
+                  box(
+                    title       = tagList(icon("chart-line"), " Pronóstico"),
+                    width       = 12,
+                    status      = "primary",
+                    solidHeader = TRUE,
+                    plotlyOutput("plot_forecast", height = "75vh"),
+                    fill        = TRUE
+                  )
+                ),
+                
+                # ── Residuales + tabla de métricas ───────────────────────────
+                fluidRow(
+                  box(
+                    title       = tagList(icon("wave-square"), "Error diario del Forecast"),
+                    width       = 12,
+                    status      = "warning",
+                    solidHeader = TRUE,
+                    plotlyOutput("plot_error_forecast", height = "420px")
+                  )
+                )
+            )
+            
+          )
         ),
         
         # ── PESTAÑA 5: Conclusiones ──────────────────────────────────

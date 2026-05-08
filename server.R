@@ -383,7 +383,476 @@ server <- function(input, output, session) {
     )
   })
   
+  # ================================================================
+  # PESTAÑA MODELO ARIMA
+  # ================================================================
+  
+  # ── ValueBoxes métricas ───────────────────────────────────────
+  output$metric_mae <- renderValueBox({
+    valueBox(
+      value    = paste0(round(bundle$metricas$MAE, 4), " USD"),
+      subtitle = "MAE — Error Absoluto Medio",
+      icon     = icon("ruler"),
+      color    = "navy"
+    )
+  })
+  
+  output$metric_rmse <- renderValueBox({
+    valueBox(
+      value    = paste0(round(bundle$metricas$RMSE, 4), " USD"),
+      subtitle = "RMSE — Error Cuadrático Medio",
+      icon     = icon("chart-simple"),
+      color    = "navy"
+    )
+  })
+  
+  output$metric_mape <- renderValueBox({
+    valueBox(
+      value    = paste0(round(bundle$metricas$MAPE, 2), " %"),
+      subtitle = "MAPE — Error Porcentual Medio",
+      icon     = icon("percent"),
+      color    = "navy"
+    )
+  })
+  
+  output$metric_da <- renderValueBox({
+    valueBox(
+      value    = paste0(round(bundle$metricas$DA, 2), " %"),
+      subtitle = "DA — Dirección Acertada",
+      icon     = icon("compass"),
+      color    = "navy"
+    )
+  })
+  
+  # ── Orden del modelo ──────────────────────────────────────────
+  output$orden_modelo <- renderUI({
+    tagList(
+      tags$span(style = "color:#7b61ff; font-size:1.3em;",
+                paste0("ARIMA(", bundle$bp, ", 1, ", bundle$bq, ")")
+      ),
+      br(), br(),
+      tags$small(style = "color:#aaaaaa;",
+                 paste0("Fecha último dato: ",
+                        format(bundle$last_date, "%d %b %Y"))
+      )
+    )
+  })
+  
+  # ── Pronóstico reactivo ───────────────────────────────────────
+  fc_reactivo <- reactive({
+    nivel <- as.numeric(input$nivel_confi)
+    forecast(modelo, h = input$horizonte, level = c(95, nivel))
+  })
+  
+  # ── Gráfico principal ─────────────────────────────────────────
+  output$plot_forecast <- renderPlotly({
+    
+    req(bundle$roll_df)
+    
+    df <- bundle$roll_df
+    
+    # ── Filtro por fechas exactas ────────────────────────────────
+    df <- df %>%
+      dplyr::filter(Date >= input$zoom_fecha[1],
+                    Date <= input$zoom_fecha[2])
+    
+    # ── Intervalo de confianza seleccionado ─────────────────────
+    nivel <- as.numeric(input$nivel_conf)
+    
+    lo <- switch(as.character(nivel),
+                 "95" = df$Lo95,
+                 "70" = df$Lo68
 
+    )
+    hi <- switch(as.character(nivel),
+                 "95" = df$Hi95,
+                 "70" = df$Hi68
+
+    )
+    ic_name <- paste0("IC ", nivel, "%")
+    
+    # ── Puntos fuera del intervalo ───────────────────────────────
+    df$fuera_ic <- !is.na(df$Real) &
+      !is.na(lo) & !is.na(hi) &
+      (df$Real < lo | df$Real > hi)
+    
+    # ── Inicio del forecast ─────────────────────────────────────
+    forecast_start_idx <- min(which(!is.na(df$Pred)))
+    forecast_start_date <- df$Date[forecast_start_idx]
+    
+    # ── Plot base ────────────────────────────────────────────────
+    p <- plot_ly(data = df, x = ~Date)
+    
+    # ── Banda de confianza (condicional) ────────────────────────
+    if (input$mostrar_ic) {
+      p <- p %>%
+        add_ribbons(
+          ymin      = lo,
+          ymax      = hi,
+          name      = ic_name,
+          fillcolor = "rgba(173,140,255,0.18)",
+          line      = list(color = "transparent"),
+          hoverinfo = "skip"
+        )
+    }
+    
+    # ── Serie real ───────────────────────────────────────────────
+    p <- p %>%
+      add_lines(
+        y    = ~Real,
+        name = "Serie Real",
+        line = list(color = "#EAEAEA", width = 2),
+        hovertemplate = "<b>Serie Real</b><br>%{x}<br>Precio: %{y:.2f}<extra></extra>"
+      )
+    
+    # ── Forecast (condicional) ───────────────────────────────────
+    if (input$mostrar_forecast) {
+      p <- p %>%
+        add_lines(
+          y    = ~Pred,
+          name = "Forecast",
+          line = list(color = "#FF3B3B", width = 2),
+          hovertemplate = "<b>Forecast</b><br>%{x}<br>Predicción: %{y:.2f}<extra></extra>"
+        )
+    }
+    
+    # ── Puntos fuera del IC (condicional) ────────────────────────
+    if (input$mostrar_fuera_ic) {
+      df_fuera <- df %>% dplyr::filter(fuera_ic)
+      
+      if (nrow(df_fuera) > 0) {
+        p <- p %>%
+          add_markers(
+            data          = df_fuera,
+            x             = ~Date,
+            y             = ~Real,
+            name          = "Fuera del IC",
+            marker        = list(
+              color  = "#f9a825",
+              size   = 7,
+              symbol = "circle",
+              line   = list(color = "white", width = 1)
+            ),
+            hovertemplate = "<b>⚠ Fuera del IC</b><br>%{x}<br>Real: %{y:.2f}<extra></extra>"
+          )
+      }
+    }
+    
+    # ── Línea vertical inicio forecast ──────────────────────────
+    p <- p %>%
+      layout(
+        shapes = list(
+          list(
+            type = "line",
+            x0   = forecast_start_date,
+            x1   = forecast_start_date,
+            y0   = min(df$Real, na.rm = TRUE),
+            y1   = max(df$Real, na.rm = TRUE),
+            line = list(
+              color = "rgba(255,255,255,0.25)",
+              dash  = "dot",
+              width = 2
+            )
+          )
+        )
+      )
+    
+    # ── Layout ──────────────────────────────────────────────────
+    p %>%
+      layout(
+        title = list(
+          text    = "<b>Rolling Forecast ARIMA</b>",
+          x       = 0.5,
+          xanchor = "center",
+          font    = list(size = 30, color = "#FFFFFF")
+        ),
+        hovermode     = "x unified",
+        paper_bgcolor = "#050816",
+        plot_bgcolor  = "#050816",
+        font          = list(color = "#EAEAEA", family = "Arial"),
+        legend = list(
+          orientation = "h",
+          x           = 0.35,
+          y           = 1.08,
+          bgcolor     = "rgba(0,0,0,0)"
+        ),
+        margin = list(l = 80, r = 40, t = 90, b = 70),
+        xaxis  = list(
+          title       = list(text = "Fecha", font = list(size = 24)),
+          showgrid    = TRUE,
+          gridcolor   = "rgba(120,120,180,0.15)",
+          zeroline    = FALSE,
+          rangeslider = list(visible = FALSE),
+          showline    = TRUE,
+          linecolor   = "rgba(255,255,255,0.3)"
+        ),
+        yaxis  = list(
+          title     = list(text = "Precio USD", font = list(size = 24)),
+          showgrid  = TRUE,
+          gridcolor = "rgba(120,120,180,0.15)",
+          zeroline  = FALSE,
+          showline  = TRUE,
+          linecolor = "rgba(255,255,255,0.3)"
+        )
+      ) %>%
+      config(
+        responsive             = TRUE,
+        scrollZoom             = TRUE,
+        displaylogo            = FALSE,
+        modeBarButtonsToRemove = list(
+          "select2d", "lasso2d",
+          "zoomIn2d", "zoomOut2d", "autoScale2d"
+        )
+      )
+  })
+  
+  # ── Gráfico de errores ─────────────────────────────────────
+  
+  output$plot_error_forecast <- renderPlotly({
+    
+    error_df_c <- data.frame(
+      Date  = bundle$roll_df$Date,
+      Error = bundle$roll_df$Real - bundle$roll_df$Pred
+    )
+    
+    error_df_c <- error_df_c %>%
+      dplyr::filter(Date >= input$zoom_fecha[1],
+                    Date <= input$zoom_fecha[2])
+    
+    # Colores según signo del error
+    colors_bar <- ifelse(
+      error_df_c$Error > 0,
+      "#2ca02c",  # Verde → subestimación
+      "#d62728"  # Rojo → sobreestimación
+    )
+    
+    # Texto hover personalizado
+    hover_txt <- paste0(
+      "<b>", format(error_df_c$Date, "%d %b %Y"), "</b><br>",
+      "Error: $", round(error_df_c$Error, 2), "<br>",
+      ifelse(error_df_c$Error > 0,
+             "Subestimación",
+             "Sobreestimación")
+    )
+    
+    plot_ly(
+      data = error_df_c,
+      x    = ~Date,
+      y    = ~Error,
+      type = "bar",
+      name = "Error",
+      marker = list(color = colors_bar),
+      hovertext = hover_txt,
+      hoverinfo = "text"
+    ) %>%
+      
+      # Línea cero
+      add_lines(
+        x    = ~Date,
+        y    = rep(0, nrow(error_df_c)),
+        name = "Cero",
+        line = list(
+          color = "#ef5350",
+          width = 1,
+          dash  = "dash"
+        ),
+        hoverinfo = "skip"
+      ) %>%
+      
+      # Tendencia LOESS
+      add_lines(
+        x = error_df_c$Date,
+        y = predict(
+          loess(Error ~ as.numeric(Date),
+                data = error_df_c,
+                span = 0.15)
+        ),
+        name = "Tendencia LOESS",
+        line = list(
+          color = "#f9a825",
+          width = 2
+        ),
+        hoverinfo = "skip"
+      ) %>%
+      
+      layout(
+        title = list(
+          text = paste0(
+            "<b>Error Diario de Predicción — Rolling Forecast</b>",
+            "<br><sup>",
+            "Verde: subestimación | ",
+            "Rojo: sobreestimación | ",
+            "Naranja: tendencia LOESS",
+            "</sup>"
+          ),
+          font = list(color = "#ffffff"),
+          y=0.95
+        ),
+        
+        xaxis = list(
+          title     = "Fecha",
+          color     = "#aaaaaa",
+          gridcolor = "#2a2a3e"
+        ),
+        
+        yaxis = list(
+          title     = "Error (USD)",
+          color     = "#aaaaaa",
+          gridcolor = "#2a2a3e",
+          zeroline  = FALSE
+        ),
+        
+        paper_bgcolor = "#0f1117",
+        plot_bgcolor  = "#0f1117",
+        
+        hovermode = "x unified",
+        
+        legend = list(
+          font = list(color = "#cccccc")
+        ),
+        
+        font = list(color = "#cccccc")
+      )
+  })
+  
+  #Gráfico predictivo
+  
+  # ── Gráfico principal ─────────────────────────────────────────
+  output$plot_pred <- renderPlotly({
+    
+    fc     <- fc_reactivo()
+    usar   <- input$usar_log
+    n_hist <- as.numeric(input$n_hist)
+    nivel  <- as.numeric(input$nivel_confi)
+    h      <- input$horizonte
+    
+    
+    # Serie histórica
+    serie <- bundle$close_vec
+    
+    # Fechas históricas (días hábiles)
+    todas_hist <- seq.Date(as.Date("2000-01-03"),
+                           bundle$last_date, by = "day")
+    fechas_hist <- todas_hist[!weekdays(todas_hist) %in%
+                                c("Saturday", "Sunday")]
+    fechas_hist <- tail(fechas_hist, length(serie))
+    hist_dates  <- tail(fechas_hist, n_hist)
+    hist_vals   <- tail(serie, n_hist)
+    
+    # Fechas futuras (días hábiles)
+    todas_fut  <- seq.Date(bundle$last_date + 1,
+                           bundle$last_date + h * 2, by = "day")
+    fc_dates   <- todas_fut[!weekdays(todas_fut) %in%
+                              c("Saturday", "Sunday")][1:h]
+    
+    # Valores del pronóstico
+    pred <- as.numeric(fc$mean)
+    lo2  <- as.numeric(fc$lower[,2])
+    hi2  <- as.numeric(fc$upper[,2])
+    lo1  <- as.numeric(fc$lower[,1])
+    hi1  <- as.numeric(fc$upper[,1])
+    
+    plot_ly() %>%
+      
+      # Banda de confianza exterior
+      add_ribbons(
+        x      = fc_dates,
+        ymin   = lo2,
+        ymax   = hi2,
+        name   = paste0("IC ", nivel, "%"),
+        fillcolor = "rgba(123,97,255,0.15)",
+        line   = list(color = "transparent")
+      ) %>%
+      
+      # Banda de confianza interior (68%)
+      add_ribbons(
+        x      = fc_dates,
+        ymin   = lo1,
+        ymax   = hi1,
+        name   = "IC 68%",
+        fillcolor = "rgba(123,97,255,0.30)",
+        line   = list(color = "transparent")
+      ) %>%
+      
+      # Serie histórica
+      add_lines(
+        x    = hist_dates,
+        y    = hist_vals,
+        name = "Histórico",
+        line = list(color = "#7b61ff", width = 1.5)
+      ) %>%
+      
+      # Pronóstico
+      add_lines(
+        x    = fc_dates,
+        y    = pred,
+        name = "Pronóstico",
+        line = list(color = "#ef5350", width = 2, dash = "dot")
+      ) %>%
+      
+      layout(
+        title         = list(
+          text = paste0("<b>Pronóstico ARIMA(", bundle$bp, ",1,",
+                        bundle$bq, ") — ", h, " días</b>"),
+          font = list(color = "#ffffff"),
+          y = 0.95),
+        xaxis         = list(title = "", color = "#aaaaaa",
+                             gridcolor = "#2a2a3e"),
+        yaxis         = list(
+          title = "Precio (USD)",
+          color = "#aaaaaa", gridcolor = "#2a2a3e"
+        ),
+        paper_bgcolor = "#0f1117",
+        plot_bgcolor  = "#0f1117",
+        hovermode     = "x unified",
+        legend        = list(font = list(color = "#cccccc")),
+        font          = list(color = "#cccccc")
+      )
+  })
+  
+  
+  output$plot_red <- renderPlotly({
+    
+    resid_vals <- as.numeric(residuals(modelo))
+    fechas_r   <- seq_along(resid_vals)
+    
+    plot_ly(x = fechas_r, y = resid_vals,
+            type = "scatter", mode = "lines",
+            name = "Residual",
+            line = list(color = "#f9a825", width = 0.8)) %>%
+      add_lines(
+        x    = fechas_r,
+        y    = rep(0, length(fechas_r)),
+        name = "Cero",
+        line = list(color = "#ef5350", width = 1, dash = "dash")
+      ) %>%
+      layout(
+        title         = list(text = "<b>Residuales del Modelo</b>",
+                             font = list(color = "#ffffff"),
+                             y = 0.95),
+        xaxis         = list(title = "Observación", color = "#aaaaaa",
+                             gridcolor = "#2a2a3e"),
+        yaxis         = list(title = "Residual", color = "#aaaaaa",
+                             gridcolor = "#2a2a3e"),
+        paper_bgcolor = "#0f1117",
+        plot_bgcolor  = "#0f1117",
+        hovermode     = "x unified",
+        legend        = list(font = list(color = "#cccccc"))
+      )
+  })
+  
+  # ── Tabla de métricas ─────────────────────────────────────────
+  output$tabla_metricas <- renderTable({
+    data.frame(
+      Métrica = c("MAE", "RMSE", "MAPE", "DA"),
+      Valor   = c(
+        paste0(round(bundle$metricas$MAE,  4), " USD"),
+        paste0(round(bundle$metricas$RMSE, 4), " USD"),
+        paste0(round(bundle$metricas$MAPE, 2), " %"),
+        paste0(round(bundle$metricas$DA,   2), " %")
+      )
+    )
+  }, striped = TRUE, hover = TRUE, bordered = TRUE)
       
 
   
