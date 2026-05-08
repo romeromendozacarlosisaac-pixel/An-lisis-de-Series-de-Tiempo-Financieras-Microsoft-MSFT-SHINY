@@ -431,7 +431,7 @@ server <- function(input, output, session) {
                 paste0("ARIMA(", bundle$bp, ", 1, ", bundle$bq, ")")
       ),
       br(), br(),
-      tags$small(style = "color:#aaaaaa;",
+      tags$small(
                  paste0("Fecha último dato: ",
                         format(bundle$last_date, "%d %b %Y"))
       )
@@ -854,7 +854,12 @@ server <- function(input, output, session) {
     )
   }, striped = TRUE, hover = TRUE, bordered = TRUE)
       
-
+  output$fecha_ultimo_dato <- renderUI({
+    fecha <- if (!is.null(bundle$last_date))
+      format(bundle$last_date, "%d %b %Y")
+    else "N/A"
+    tags$small(fecha)
+  })
   
 
 } 

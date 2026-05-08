@@ -1,7 +1,6 @@
 # --- Archivo: ui.R  ---
 library(shinydashboard)
 
-# ── Modelo ARIMA — carga UNA sola vez ─────────────────────────
 
 # Define la UI (Interfaz de Usuario)
 ui <- dashboardPage(skin = "purple",
@@ -723,55 +722,203 @@ text-align: center;
                 br(),
                 
                 fluidRow(
-                  # Tabla detallada
+                  # ── Resumen del Modelo ──────────────────────────────────────
                   box(
-                    title       = tagList(icon("table"), " Resumen de Métricas"),
-                    width       = 6,
-                    status      = "primary",
-                    solidHeader = TRUE,
-                    br(),
-                    tableOutput("tabla_metricas"),
-                    br(),
-                    tags$div(
-                      style = "padding: 10px;",
-                      tags$b("Orden del modelo:"),
-                      br(), br(),
-                      uiOutput("orden_modelo")
-                    )
-                  ),
-                  
-                  # Interpretación
-                  box(
-                    title       = tagList(icon("circle-info"), " Interpretación"),
-                    width       = 6,
+                    title       = tagList(icon("microchip"), " Resumen del Modelo"),
+                    width       = 4,
                     status      = "primary",
                     solidHeader = TRUE,
                     
-                    tags$ul(
-                      tags$li(
-                        tags$b("MAE (Error Absoluto Medio): "),
-                        "Promedio del error absoluto entre el valor predicho y el real.
-               Menor valor indica mayor precisión."
+                    tags$div(
+                      style = "padding: 5px 10px; font-size:18px;",
+                      
+                      # Orden
+                      tags$div(style = "margin-bottom: 15px;",
+                               tags$b("Modelo ajustado:"),
+                               br(),
+                               tags$span(style = "color:#7b61ff; font-size:1.2em; font-weight:bold;",
+                                         uiOutput("orden_modelo")
+                               )
                       ),
-                      br(),
-                      tags$li(
-                        tags$b("RMSE (Raíz del Error Cuadrático Medio): "),
-                        "Penaliza errores grandes. Útil para detectar predicciones
-               muy alejadas del valor real."
+                      
+                      tags$hr(),
+                      
+                      # Coeficientes
+                      tags$div(style = "margin-bottom: 15px;",
+                               tags$b("Coeficiente MA1:"),
+                               br(),
+                               tags$span( "-0.0530  (s.e. = 0.0127)")
+                              
                       ),
-                      br(),
-                      tags$li(
-                        tags$b("MAPE (Error Porcentual Absoluto Medio): "),
-                        "Expresa el error en porcentaje respecto al valor real.
-               Facilita la comparación entre modelos."
+                      
+                      tags$div(style = "margin-bottom: 15px;",
+                               tags$b("σ²:"),
+                               tags$span( " 7.021")
                       ),
-                      br(),
-                      tags$li(
-                        tags$b("DA (Dirección Acertada): "),
-                        "Porcentaje de veces que el modelo predijo correctamente
-               la dirección del movimiento (alza o baja)."
+                      
+                      tags$div(style = "margin-bottom: 15px;",
+                               tags$b("Log-Likelihood:"),
+                               tags$span(" -15741.04")
+                      ),
+                      
+                      tags$hr(),
+                      
+                      # Criterios de información
+                      tags$div(style = "margin-bottom: 8px;",
+                               tags$b("AIC:  "),
+                               tags$span(style = "color:#26a69a; font-size:1.1em;", "31486.09")
+                      ),
+                      tags$div(style = "margin-bottom: 8px;",
+                               tags$b("AICc: "),
+                               tags$span(style = "color:#26a69a; font-size:1.1em;", "31486.09")
+                      ),
+                      tags$div(style = "margin-bottom: 15px;",
+                               tags$b("BIC:  "),
+                               tags$span(style = "color:#26a69a; font-size:1.1em;", "31499.67")
+                      ),
+                      
+                      tags$hr(),
+                      
+                      tags$div(style = "margin-bottom: 8px;",
+                               tags$b("Módulo raíces MA:"),
+                               tags$span( " 18.864"),
+                               tags$small( " (debe ser > 1 , se cumple)")
+                      )
+                      
+                    )
+                  ),
+                  
+                  # ── Coberturas + Residuales ─────────────────────────────────
+                  box(
+                    title       = tagList(icon("flask"), " Diagnóstico del Modelo"),
+                    width       = 4,
+                    status      = "primary",
+                    solidHeader = TRUE,
+                    
+                    tags$div(
+                      style = "padding: 5px 10px;font-size:18px;",
+                      
+                      tags$b("Cobertura Empírica de Intervalos:"),
+                      br(), br(),
+                      
+                      # IC 95%
+                      tags$div(style = "margin-bottom: 10px;",
+                               tags$span(style = "font-weight:bold","IC 95%: "),
+                               tags$span(
+                                 style = "color:#ef5350; font-weight:bold; font-size:1.1em;",
+                                 "56.8%"
+                               ),
+                               tags$small(
+                          
+                                 " (esperado: 95% — modelo subestima incertidumbre)"
+                               )
+                      ),
+                      
+                      # IC 68%
+                      tags$div(style = "margin-bottom: 20px;",
+                               tags$span(style = "font-weight:bold","IC 70%: "),
+                               tags$span(
+                                 style = "color:#ef5350; font-weight:bold; font-size:1.1em;",
+                                 "32.8%"
+                               ),
+                               tags$small(
+                                 
+                                 " (esperado: 70% — modelo subestima incertidumbre)"
+                               )
+                      ),
+                      
+                      tags$hr(),
+                      
+                      tags$b("Diagnóstico de Residuales:"),
+                      br(), br(),
+                      
+                      tags$div(style = "margin-bottom: 8px;",
+                               tags$b("Media residuales: "),
+                               tags$span( "0.057527"),
+                               tags$small(" (esperado ≈ 0 , se cumple)")
+                      ),
+                      tags$div(style = "margin-bottom: 8px;",
+                               tags$b("Desv. estándar: "),
+                               tags$span("2.6490 USD")
+                      ),
+                      tags$div(style = "margin-bottom: 8px;",
+                               tags$b("Skewness: "),
+                               tags$span(style = "color:#f9a825;font-weight:bold", "-0.8351"),
+                               tags$small(" (asimetría negativa)")
+                      ),
+                      tags$div(style = "margin-bottom: 15px;",
+                               tags$b("Kurtosis: "),
+                               tags$span(style = "color:#ef5350;font-weight:bold", "39.2902"),
+                               tags$small(" (colas muy pesadas)")
+                      ),
+                      
+                      tags$hr(),
+                      
+                      tags$div(style = "margin-bottom: 8px;",
+                               tags$b("Ljung-Box p-valor: "),
+                               tags$span(style = "color:#ef5350;font-weight:bold", "0.0000"),
+                               tags$small(
+                                          " → Autocorrelación residual presente ")
+                      ),
+                      tags$div(
+                        tags$b("Jarque-Bera p-valor: "),
+                        tags$span(style = "color:#ef5350;font-weight:bold", "0.00e+00"),
+                        tags$small(
+                                   " → Colas pesadas / no normal ")
                       )
                     )
+                  ),
+                  
+                  # ── Interpretación ─────────────────────────────────────────
+                  box(
+                    title       = tagList(icon("circle-info"), " Interpretación"),
+                    width       = 4,
+                    status      = "primary",
+                    solidHeader = TRUE,
+                    
+                  tags$div(
+                    style = "font-size:16px;",
+                    
+                    tags$ul(
+                      tags$li(
+                        tags$b("MAE: "),
+                        "Promedio del error absoluto entre predicción y valor real.
+         Menor valor indica mayor precisión."
+                      ), br(),
+                      tags$li(
+                        tags$b("RMSE: "),
+                        "Penaliza errores grandes. Útil para detectar predicciones
+         muy alejadas del valor real."
+                      ), br(),
+                      tags$li(
+                        tags$b("MAPE: "),
+                        "Error en porcentaje respecto al valor real.
+         Facilita comparación entre modelos."
+                      ), br(),
+                      tags$li(
+                        tags$b("DA: "),
+                        "Porcentaje de veces que el modelo acertó la dirección
+         del movimiento (alza o baja)."
+                      ), br(),
+                      tags$li(
+                        tags$b("AIC / BIC: "),
+                        "Criterios de selección de modelos. Penalizan la complejidad.
+         Menor valor indica mejor ajuste relativo."
+                      ), br(),
+                      tags$li(
+                        tags$b("Cobertura empírica: "),
+                        "Proporción real de observaciones dentro del intervalo
+         de confianza. Valores muy por debajo del nivel nominal
+         indican que el modelo subestima la incertidumbre."
+                      ), br(),
+                      tags$li(
+                        tags$b("Kurtosis elevada: "),
+                        "Confirma la presencia de colas pesadas en los residuales,
+         consistente con el comportamiento leptocúrtico de los
+         retornos financieros."
+                      )
+                    )
+                  )
                   )
                 )
         ),
@@ -1077,9 +1224,21 @@ text-align: center;
                              style = "background-color: #0d1117; border-left: 4px solid #7b61ff;
              padding: 15px; border-radius: 4px;",
                              tags$em(style = "color: #aaaaaa;",
-                                     "Estos hallazgos proporcionan una base sólida para el desarrollo
-       de modelos predictivos robustos y estrategias de inversión
-       fundamentadas en evidencia empírica."
+                                     "El análisis realizado demuestra que los modelos ARIMA
+                                     representan una herramienta efectiva para el pronóstico
+                                     de series temporales financieras, permitiendo capturar 
+                                     adecuadamente la dinámica del precio de cierre y los retornos
+                                     de Microsoft (MSFT). A través de pruebas de estacionariedad,
+                                     diferenciación y validación fuera de muestra, se obtuvieron
+                                     modelos parsimoniosos con un desempeño predictivo satisfactorio
+                                     en el corto plazo. No obstante, el estudio de los residuales
+                                     y la volatilidad evidenció la presencia de heterocedasticidad
+                                     y agrupamientos de volatilidad característicos de los mercados
+                                     financieros. Por ello, una línea de mejora natural consiste
+                                     en incorporar modelos GARCH, capaces de modelar la varianza 
+                                     condicional y complementar la estructura ARIMA, logrando así
+                                     pronósticos más robustos y una representación más realista 
+                                     del riesgo y la incertidumbre financiera."
                              )
                            )
                          )
